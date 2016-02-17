@@ -1,2 +1,4 @@
 gunicorn
 flask
+peewee
+psycopg2

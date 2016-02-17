@@ -1,13 +1,29 @@
 import logging
 
 import flask
+from flask import g
+
+from userapi.db import api as db_api
 
 APP = flask.Flask(__name__)
+
 
 @APP.before_first_request
 def _setup():
     APP.logger.addHandler(logging.StreamHandler())
     APP.logger.setLevel(logging.INFO)
+
+
+@APP.before_request
+def before_request():
+    g.database = db_api.get_database()
+    g.database.connect()
+
+
+@APP.after_request
+def after_request(response):
+    g.database.close()
+    return response
 
 
 @APP.route("/users/<userid>", methods=['GET'])

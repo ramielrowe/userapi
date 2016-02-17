@@ -1,4 +1,5 @@
 import json
+import mock
 import unittest
 
 from userapi import api
@@ -17,6 +18,9 @@ TEST_GROUP = {'name': 'users'}
 class APITestCase(unittest.TestCase):
     def setUp(self):
         self.app = api.APP.test_client()
+        db_patcher = mock.patch.object(api, 'db')
+        self.mock_db = db_patcher.start()
+        self.addCleanup(db_patcher.stop)
 
     def _req(self, func, url, data):
         return func(url,
