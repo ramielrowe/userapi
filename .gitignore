@@ -1,0 +1,9 @@
+.idea
+*.swp
+build/
+*.egg-info/
+dist/
+*.pyc
+.tox
+.cache
+.venv
