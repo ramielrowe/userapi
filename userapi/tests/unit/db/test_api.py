@@ -192,3 +192,120 @@ class APITestCase(unittest.TestCase):
                           api.get_group,
                           'test_name')
         self.Group.get.assert_called_once_with(self.Group.name == 'test_name')
+
+    def test_remove_unrequested_users_no_changes(self):
+        mock_user = mock.MagicMock()
+        mock_user.userid = 'id1'
+        requested_users = {mock_user.userid: mock_user}
+
+        mock_group = mock.MagicMock()
+        mock_usergroup = mock.MagicMock()
+        mock_usergroup.user = mock_user
+        mock_usergroup.group = mock_group
+        mock_group.usergroups = [mock_usergroup]
+
+        existing_users = api._remove_unrequested_users(mock_group,
+                                                       requested_users)
+
+        self.assertEqual(1, len(existing_users))
+        self.assertTrue(mock_user.userid in existing_users)
+
+    def test_remove_unrequested_users_removes_user(self):
+        mock_user1 = mock.MagicMock()
+        mock_user1.userid = 'id1'
+        mock_user2 = mock.MagicMock()
+        mock_user2.userid = 'id2'
+        requested_users = {mock_user1.userid: mock_user1}
+
+        mock_group = mock.MagicMock()
+        mock_usergroup1 = mock.MagicMock()
+        mock_usergroup1.user = mock_user1
+        mock_usergroup1.group = mock_group
+        mock_usergroup2 = mock.MagicMock()
+        mock_usergroup2.user = mock_user2
+        mock_usergroup2.group = mock_group
+        mock_group.usergroups = [mock_usergroup1, mock_usergroup2]
+
+        existing_users = api._remove_unrequested_users(mock_group,
+                                                       requested_users)
+
+        self.assertEqual(1, len(existing_users))
+        self.assertTrue(mock_user1.userid in existing_users)
+        self.assertFalse(mock_user2.delete_instance.called)
+
+    def test_remove_unrequested_users_removes_all_users(self):
+        mock_user1 = mock.MagicMock()
+        mock_user1.userid = 'id1'
+        mock_user2 = mock.MagicMock()
+        mock_user2.userid = 'id2'
+
+        mock_group = mock.MagicMock()
+        mock_usergroup1 = mock.MagicMock()
+        mock_usergroup1.user = mock_user1
+        mock_usergroup1.group = mock_group
+        mock_usergroup2 = mock.MagicMock()
+        mock_usergroup2.user = mock_user2
+        mock_usergroup2.group = mock_group
+        mock_group.usergroups = [mock_usergroup1, mock_usergroup2]
+
+        existing_users = api._remove_unrequested_users(mock_group, {})
+
+        self.assertEqual(0, len(existing_users))
+
+    def test_add_new_users(self):
+        mock_user1 = mock.MagicMock()
+        mock_user1.userid = 'id1'
+        mock_user2 = mock.MagicMock()
+        mock_user2.userid = 'id2'
+        requested_users = {mock_user1.userid: mock_user1,
+                           mock_user2.userid: mock_user2}
+        mock_group = mock.MagicMock()
+
+        api._add_new_users(mock_group, requested_users, {mock_user1.userid})
+
+        self.UserGroups.assert_called_once_with(user=mock_user2,
+                                                group=mock_group)
+        self.assertTrue(self.UserGroups.return_value.save.called)
+
+    def test_add_new_users_no_new(self):
+        mock_user = mock.MagicMock()
+        mock_user.userid = 'id1'
+        requested_users = {mock_user.userid: mock_user}
+        mock_group = mock.MagicMock()
+
+        api._add_new_users(mock_group, requested_users, {mock_user.userid})
+
+        self.assertFalse(self.UserGroups.called)
+
+    @mock.patch.object(api, '_add_new_users')
+    @mock.patch.object(api, '_remove_unrequested_users')
+    @mock.patch.object(api, 'get_user')
+    @mock.patch.object(api, 'get_group')
+    def test_update_group(self, mock_get_group, mock_get_user,
+                          mock_remove_unrequested_users,
+                          mock_add_new_users):
+        mock_group = mock.MagicMock()
+        mock_get_group.return_value = mock_group
+        mock_user1 = mock.MagicMock()
+        mock_user1.userid = 'id1'
+        mock_user2 = mock.MagicMock()
+        mock_user2.userid = 'id2'
+        mock_get_user.side_effect = [mock_user1, mock_user2]
+        requested_users = {mock_user1.userid: mock_user1,
+                           mock_user2.userid: mock_user2}
+        existing_users = {mock_user1.userid}
+        mock_remove_unrequested_users.return_value = existing_users
+
+        group = api.update_group('test_group', [mock_user1.userid,
+                                                mock_user2.userid])
+
+        self.assertEqual(mock_group, group)
+        mock_get_group.assert_called_once_with('test_group')
+        mock_get_user.assert_has_calls([mock.call(mock_user1.userid),
+                                        mock.call(mock_user2.userid)])
+        mock_remove_unrequested_users.assert_called_once_with(
+            mock_group, requested_users
+        )
+        mock_add_new_users.assert_called_once_with(mock_group,
+                                                   requested_users,
+                                                   existing_users)

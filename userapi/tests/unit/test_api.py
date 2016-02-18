@@ -140,4 +140,21 @@ class APITestCase(unittest.TestCase):
         self.app.delete('/groups/a')
 
     def test_update_group(self):
-        self._put('/groups/a', fixtures.TEST_GROUP)
+        member_ids = ['user1', 'user2']
+        mock_group = mock.MagicMock()
+        mock_group.to_list.return_value = member_ids
+        self.mock_db.update_group.return_value = mock_group
+
+        resp, body = self._put('/groups/admins', member_ids)
+
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(member_ids, body)
+        self.mock_db.update_group.assert_called_once_with('admins', member_ids)
+
+    def test_update_group_not_list(self):
+        member_ids = {}
+
+        resp, _ = self._put('/groups/admins', member_ids)
+
+        self.assertEqual(400, resp.status_code)
+        self.assertFalse(self.mock_db.update_group.called)

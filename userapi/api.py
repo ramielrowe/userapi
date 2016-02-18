@@ -121,4 +121,7 @@ def delete_group(name):
 @APP.route("/groups/<name>", methods=['PUT'])
 @handle_exceptions
 def update_group(name):
-    return jsonify({})
+    body = request.get_json()
+    if not isinstance(body, list):
+        raise exceptions.InvalidRequestException()
+    return make_response(db_api.update_group(name, body).to_list())

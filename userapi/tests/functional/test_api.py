@@ -10,15 +10,15 @@ API_URL = os.environ.get('API_URL')
 
 def create_test_user():
     return {
-        'userid': str(uuid.uuid4()),
-        'first_name': str(uuid.uuid4()),
-        'last_name': str(uuid.uuid4())
+        'userid': unicode(str(uuid.uuid4())),
+        'first_name': unicode(str(uuid.uuid4())),
+        'last_name': unicode(str(uuid.uuid4()))
     }
 
 
 def create_test_group():
     return {
-        'name': str(uuid.uuid4())
+        'name': unicode(str(uuid.uuid4()))
     }
 
 
@@ -175,3 +175,64 @@ class FunctionalTestCases(unittest.TestCase):
         self.assertEqual(201, create_result.status_code)
         self.assertEqual(200, get_result.status_code)
         self.assertEqual([], body)
+
+    def test_update_group(self):
+        test_user = create_test_user()
+        test_group = create_test_group()
+        group_url = '/groups/%s' % test_group['name']
+
+        create_user_result, _ = self._post('/users', test_user)
+        self.assertEqual(201, create_user_result.status_code)
+
+        create_group_result, _ = self._post('/groups', test_group)
+        self.assertEqual(201, create_group_result.status_code)
+
+        get_result1, get_group1 = self._get(group_url)
+        self.assertEqual(200, get_result1.status_code)
+        self.assertEqual([], get_group1)
+
+        update_result, group_update = self._put(group_url,
+                                                [test_user['userid']])
+        self.assertEqual(200, update_result.status_code)
+        self.assertEqual([test_user['userid']], group_update)
+
+        get_result2, get_group2 = self._get(group_url)
+        self.assertEqual(200, get_result2.status_code)
+        self.assertEqual([test_user['userid']], get_group2)
+
+    def test_update_group_removes_user(self):
+        test_user1 = create_test_user()
+        test_user2 = create_test_user()
+        test_group = create_test_group()
+        group_url = '/groups/%s' % test_group['name']
+
+        create_user_result1, _ = self._post('/users', test_user1)
+        self.assertEqual(201, create_user_result1.status_code)
+        create_user_result2, _ = self._post('/users', test_user2)
+        self.assertEqual(201, create_user_result2.status_code)
+
+        create_group_result, _ = self._post('/groups', test_group)
+        self.assertEqual(201, create_group_result.status_code)
+
+        update_result1, group_update1 = self._put(group_url,
+                                                [test_user1['userid'],
+                                                 test_user2['userid']])
+        self.assertEqual(200, update_result1.status_code)
+        self.assertEqual(sorted([test_user1['userid'],
+                                 test_user2['userid']]),
+                         sorted(group_update1))
+
+        get_result1, get_group1 = self._get(group_url)
+        self.assertEqual(200, get_result1.status_code)
+        self.assertEqual(sorted([test_user1['userid'],
+                                 test_user2['userid']]),
+                         sorted(get_group1))
+
+        update_result2, group_update2 = self._put(group_url,
+                                                  [test_user1['userid']])
+        self.assertEqual(200, update_result2.status_code)
+        self.assertEqual([test_user1['userid']], group_update2)
+
+        get_result2, get_group2 = self._get(group_url)
+        self.assertEqual(200, get_result2.status_code)
+        self.assertEqual([test_user1['userid']], get_group2)

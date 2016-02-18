@@ -124,8 +124,28 @@ def create_group(name):
     return new_group
 
 
-def update_group(name, members):
-    pass
+def _remove_unrequested_users(group, requested_users):
+    existing_users = set()
+    for usergroup in group.usergroups:
+        if usergroup.user.userid not in requested_users:
+            usergroup.delete_instance()
+        else:
+            existing_users.add(usergroup.user.userid)
+    return existing_users
+
+
+def _add_new_users(group, requested_users, existing_users):
+    for userid, user in requested_users.iteritems():
+        if userid not in existing_users:
+            UserGroups(user=user, group=group).save()
+
+
+def update_group(name, member_ids):
+    group = get_group(name)
+    requested_users = {userid: get_user(userid) for userid in member_ids}
+    existing_users = _remove_unrequested_users(group, requested_users)
+    _add_new_users(group, requested_users, existing_users)
+    return get_group(name)
 
 
 def delete_group(name):
