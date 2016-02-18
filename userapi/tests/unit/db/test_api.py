@@ -152,20 +152,24 @@ class APITestCase(unittest.TestCase):
                           api.update_user, 'some_id', fixtures.TEST_USER)
 
     def test_delete_user(self):
-        (self.User.select.return_value
-                  .where.return_value
-                  .exists.return_value) = True
+        mock_user = mock.MagicMock()
+        self.User.get.return_value = mock_user
 
         api.delete_user('some_id')
 
+        self.User.get.assert_called_once_with(self.User.userid == 'some_id')
+        self.UserGroups.delete.return_value.where.assert_called_once_with(
+            self.UserGroups.user == mock_user
+        )
         self.User.delete.return_value.where.assert_called_once_with(
             self.User.userid == 'some_id'
         )
 
     def test_delete_user_does_not_exist(self):
-        (self.User.select.return_value
-                  .where.return_value
-                  .exists.return_value) = False
+        class TestException(Exception):
+            pass
+        self.User.DoesNotExist = TestException
+        self.User.get.side_effect = self.User.DoesNotExist()
 
         self.assertRaises(exceptions.UserNotFoundException,
                           api.delete_user, 'some_id')

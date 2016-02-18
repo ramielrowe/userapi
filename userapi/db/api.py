@@ -109,9 +109,8 @@ def update_user(userid, user):
 
 
 def delete_user(userid):
-    if not _user_exists(userid):
-        raise exceptions.UserNotFoundException()
-
+    user = get_user(userid)
+    UserGroups.delete().where(UserGroups.user == user).execute()
     User.delete().where(User.userid == userid).execute()
 
 
