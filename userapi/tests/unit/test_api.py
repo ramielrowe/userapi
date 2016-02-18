@@ -23,10 +23,13 @@ class APITestCase(unittest.TestCase):
         self.mock_db = db_api_patcher.start()
         self.addCleanup(db_api_patcher.stop)
 
-    def _req(self, func, url, data):
-        response = func(url,
-                        data=json.dumps(data),
-                        headers={'content-type': 'application/json'})
+    def _req(self, func, url, data=None):
+        if data:
+            response = func(url,
+                            data=json.dumps(data),
+                            headers={'content-type': 'application/json'})
+        else:
+            response = func(url)
         return response, json.loads(response.data)
 
     def _post(self, url, data):
@@ -35,8 +38,27 @@ class APITestCase(unittest.TestCase):
     def _put(self, url, data):
         return self._req(self.app.put, url, data)
 
+    def _get(self, url):
+        return self._req(self.app.get, url)
+
     def test_get_user(self):
-        self.app.get('/users/a')
+        mock_user = mock.MagicMock()
+        mock_user.to_dict.return_value = TEST_USER
+        self.mock_db.get_user.return_value = mock_user
+
+        resp, new_user = self._get('/users/test')
+
+        self.assertEqual(new_user, TEST_USER)
+        self.mock_db.get_user.assert_called_once_with('test')
+
+    def test_get_user_does_not_exist(self):
+        exc = exceptions.UserNotFoundException()
+        self.mock_db.get_user.side_effect = exc
+
+        resp, _ = self._get('/users/test')
+
+        self.assertEqual(resp.status_code, exc.status_code)
+        self.mock_db.get_user.assert_called_once_with('test')
 
     def test_create_user(self):
         mock_user = mock.MagicMock()

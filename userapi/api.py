@@ -67,7 +67,7 @@ def _check_fields(body, fields):
 @APP.route("/users/<userid>", methods=['GET'])
 @handle_exceptions
 def get_user(userid):
-    return jsonify({})
+    return jsonify(db_api.get_user(userid).to_dict())
 
 
 @APP.route("/users", methods=['POST'])

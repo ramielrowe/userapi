@@ -52,7 +52,10 @@ def _create_tables(database):
 
 
 def get_user(userid):
-    pass
+    try:
+        return User.get(User.userid == userid)
+    except User.DoesNotExist as dne:
+        raise exceptions.UserNotFoundException
 
 
 def create_user(user):

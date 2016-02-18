@@ -8,3 +8,7 @@ class MissingRequiredFieldException(BaseAPIException):
 
 class UserAlreadyExistsException(BaseAPIException):
     status_code = 409
+
+
+class UserNotFoundException(BaseAPIException):
+    status_code = 404

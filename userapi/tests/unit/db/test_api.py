@@ -49,3 +49,25 @@ class APITestCase(unittest.TestCase):
                           {'userid': 'amelton',
                            'first_name': 'andrew',
                            'last_name': 'melton'})
+
+    def test_get_user(self):
+        mock_user = mock.MagicMock()
+
+        self.User.get.return_value = mock_user
+
+        new_user = api.get_user('test_id')
+
+        self.assertEqual(new_user, mock_user)
+        self.User.get.assert_called_once_with(self.User.userid == 'test_id')
+
+    def test_get_user_does_not_exist(self):
+        class TestException(Exception):
+            pass
+        self.User.DoesNotExist = TestException
+        self.User.get.side_effect = self.User.DoesNotExist()
+
+        self.assertRaises(exceptions.UserNotFoundException,
+                          api.get_user,
+                          'test_id')
+
+        self.User.get.assert_called_once_with(self.User.userid == 'test_id')

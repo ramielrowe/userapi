@@ -53,3 +53,19 @@ class FunctionalTestCases(unittest.TestCase):
         result, _ = self._post('/users', test_user)
 
         self.assertEqual(400, result.status_code)
+
+    def test_get_user(self):
+        test_user = create_test_user()
+
+        self._post('/users', test_user)
+        result, user = self._get('/users/%s' % test_user['userid'])
+
+        self.assertEqual(200, result.status_code)
+        self.assertEqual(test_user['userid'], user['userid'])
+        self.assertEqual(test_user['last_name'], user['last_name'])
+        self.assertEqual(test_user['first_name'], user['first_name'])
+
+    def test_get_user_does_not_exist(self):
+        result, user = self._get('/users/userthatdoestexist')
+
+        self.assertEqual(404, result.status_code)
