@@ -2,6 +2,7 @@
 
  * [API Documentation](#api-documentation)
  * [Development Environment](#development-environment)
+ * [Code Layout](#code-layout)
 
 ### API Documentation
 
@@ -178,3 +179,18 @@ Running unit tests
       congratulations :)
   
   When you make changes, simply run `deploy_api.sh` again to push out the new changes.
+
+### Code Layout
+
+  * Scripts
+    *  `env.sh` - Environment specific variables
+    * `./deploy_postgres.sh` - Idempotently create PostgreSQL containers
+    * `./build_api.sh` - Build API Image
+    * `./userapi_db.sh` - Runs database management actions (creates tables)
+    * `./run_api.sh` - Run API containers
+    * `./deploy_api.sh` - Helper script that wraps everything needed to push out code.
+    * `./postgres_shell.sh` - Launches an interactive container running `pq` against the database.
+    * `./run_functional.sh` - Helper script that grabs host and port where API is located and runs the functional tests against it.
+  * Tests
+    * `userapi/tests/unit` - Unit tests
+    * `userapi/tests/functional` - Functional/Integration tests
