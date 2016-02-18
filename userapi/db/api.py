@@ -19,7 +19,8 @@ class User(peewee.Model):
     def to_dict(self):
         return {'userid': self.userid,
                 'first_name': self.first_name,
-                'last_name': self.last_name}
+                'last_name': self.last_name,
+                'groups': [ug.group.name for ug in self.usergroups]}
 
 
 class Group(peewee.Model):
@@ -78,10 +79,16 @@ def create_user(user):
     if _user_exists(userid):
         raise exceptions.UserAlreadyExistsException()
 
+    requested_groups = [get_group(name) for name in user.get('groups', list())]
+
     new_user = User(userid=userid,
                     first_name=user['first_name'],
                     last_name=user['last_name'])
     new_user.save()
+
+    for group in requested_groups:
+        UserGroups(user=new_user, group=group).save()
+
     return new_user
 
 

@@ -77,6 +77,8 @@ def get_user(userid):
 def create_user():
     body = request.get_json()
     _check_fields(body, REQUIRED_USER_FIELDS)
+    if 'groups' in body and not isinstance(body['groups'], list):
+        raise exceptions.InvalidRequestException()
     new_user = db_api.create_user(body)
     return make_response(new_user.to_dict(), code=201)
 

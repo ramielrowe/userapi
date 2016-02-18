@@ -66,6 +66,30 @@ class APITestCase(unittest.TestCase):
         self.assertEqual(new_user, fixtures.TEST_USER)
         self.mock_db.create_user.assert_called_once_with(fixtures.TEST_USER)
 
+    def test_create_with_groups(self):
+        mock_user = mock.MagicMock()
+        mock_user.to_dict.return_value = fixtures.TEST_USER_WITH_GROUP
+        self.mock_db.create_user.return_value = mock_user
+
+        resp, new_user = self._post('/users', fixtures.TEST_USER_WITH_GROUP)
+
+        self.assertEqual(201, resp.status_code)
+        self.assertEqual(new_user, fixtures.TEST_USER_WITH_GROUP)
+        self.mock_db.create_user.assert_called_once_with(
+            fixtures.TEST_USER_WITH_GROUP)
+
+    def test_create_with_groups_not_list(self):
+        mock_user = mock.MagicMock()
+        mock_user.to_dict.return_value = fixtures.TEST_USER_WITH_GROUP
+        self.mock_db.create_user.return_value = mock_user
+
+        request = copy.deepcopy(fixtures.TEST_USER_WITH_GROUP)
+        request['groups'] = 'not a list'
+        resp, _ = self._post('/users', request)
+
+        self.assertEqual(400, resp.status_code)
+        self.assertFalse(self.mock_db.create_user.called)
+
     def test_create_user_already_exists(self):
         exc = exceptions.UserAlreadyExistsException()
         self.mock_db.create_user.side_effect = exc

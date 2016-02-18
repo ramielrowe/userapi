@@ -8,11 +8,12 @@ import requests
 API_URL = os.environ.get('API_URL')
 
 
-def create_test_user():
+def create_test_user(groups=None):
     return {
         'userid': unicode(str(uuid.uuid4())),
         'first_name': unicode(str(uuid.uuid4())),
-        'last_name': unicode(str(uuid.uuid4()))
+        'last_name': unicode(str(uuid.uuid4())),
+        'groups': groups if groups else list()
     }
 
 
@@ -261,3 +262,24 @@ class FunctionalTestCases(unittest.TestCase):
     def test_delete_group_does_not_exist(self):
         delete_group_result, _ = self._delete('/groups/groupthatdoestexist')
         self.assertEqual(404, delete_group_result.status_code)
+
+    def test_create_user_with_group(self):
+        test_group = create_test_group()
+        test_user = create_test_user(groups=[test_group['name']])
+
+        group_result, _ = self._post('/groups', test_group)
+        self.assertEqual(201, group_result.status_code)
+
+        user_result, user_body = self._post('/users', test_user)
+        self.assertEqual(201, user_result.status_code)
+        self.assertEqual(test_user['userid'], user_body['userid'])
+        self.assertEqual(test_user['last_name'], user_body['last_name'])
+        self.assertEqual(test_user['first_name'], user_body['first_name'])
+        self.assertEqual(test_user['groups'], user_body['groups'])
+
+        get_result, get_body = self._get('/users/%s' % test_user['userid'])
+        self.assertEqual(200, get_result.status_code)
+        self.assertEqual(test_user['userid'], get_body['userid'])
+        self.assertEqual(test_user['last_name'], get_body['last_name'])
+        self.assertEqual(test_user['first_name'], get_body['first_name'])
+        self.assertEqual(test_user['groups'], get_body['groups'])

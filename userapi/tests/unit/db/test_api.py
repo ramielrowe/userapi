@@ -24,7 +24,6 @@ class APITestCase(unittest.TestCase):
 
     def test_create_user(self):
         mock_user = mock.MagicMock()
-
         (self.User.select.return_value
                   .where.return_value
                   .exists.return_value) = False
@@ -38,6 +37,29 @@ class APITestCase(unittest.TestCase):
                                           first_name=user['first_name'],
                                           last_name=user['last_name'])
         mock_user.save.assert_called_once_with()
+
+    def test_create_user_with_group(self):
+        mock_user = mock.MagicMock()
+        (self.User.select.return_value
+                  .where.return_value
+                  .exists.return_value) = False
+        self.User.return_value = mock_user
+
+        mock_group = mock.MagicMock()
+        self.Group.get.return_value = mock_group
+
+        user = fixtures.TEST_USER_WITH_GROUP
+        new_user = api.create_user(user)
+
+        self.assertEqual(new_user, mock_user)
+        self.Group.get.assert_called_once_with(
+            self.Group.name == user['groups'][0])
+        self.User.assert_called_once_with(userid=user['userid'],
+                                          first_name=user['first_name'],
+                                          last_name=user['last_name'])
+        mock_user.save.assert_called_once_with()
+        self.UserGroups.assert_called_once_with(user=mock_user,
+                                                group=mock_group)
 
     def test_create_user_already_exists(self):
         (self.User.select.return_value
