@@ -16,6 +16,12 @@ def create_test_user():
     }
 
 
+def create_test_group():
+    return {
+        'name': str(uuid.uuid4())
+    }
+
+
 class FunctionalTestCases(unittest.TestCase):
     def _get(self, path):
         response = requests.get(API_URL + path)
@@ -142,3 +148,19 @@ class FunctionalTestCases(unittest.TestCase):
 
         get_after_result, _ = self._get('/users/%s' % test_user['userid'])
         self.assertEqual(404, get_after_result.status_code)
+
+    def test_create_group(self):
+        test_group = create_test_group()
+
+        create_result, body = self._post('/groups', test_group)
+
+        self.assertEqual(test_group['name'], body['name'])
+
+    def test_create_group_already_exists(self):
+        test_group = create_test_group()
+
+        create_result1, _ = self._post('/groups', test_group)
+        create_result2, _ = self._post('/groups', test_group)
+
+        self.assertEqual(201, create_result1.status_code)
+        self.assertEqual(409, create_result2.status_code)

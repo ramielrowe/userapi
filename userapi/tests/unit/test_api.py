@@ -7,8 +7,6 @@ from userapi import api
 from userapi import exceptions
 from userapi.tests.unit import fixtures
 
-TEST_GROUP = {'name': 'users'}
-
 
 class APITestCase(unittest.TestCase):
     def setUp(self):
@@ -119,10 +117,19 @@ class APITestCase(unittest.TestCase):
         self.app.get('/groups/a')
 
     def test_create_group(self):
-        self._post('/groups', TEST_GROUP)
+        mock_group = mock.MagicMock()
+        mock_group.to_dict.return_value = fixtures.TEST_GROUP
+        self.mock_db.create_group.return_value = mock_group
+
+        resp, body = self._post('/groups', fixtures.TEST_GROUP)
+
+        self.assertEqual(201, resp.status_code)
+        self.assertEqual(fixtures.TEST_GROUP['name'], body['name'])
+        self.mock_db.create_group.assert_called_once_with(
+            fixtures.TEST_GROUP['name'])
 
     def test_delete_group(self):
         self.app.delete('/groups/a')
 
     def test_update_group(self):
-        self._put('/groups/a', TEST_GROUP)
+        self._put('/groups/a', fixtures.TEST_GROUP)

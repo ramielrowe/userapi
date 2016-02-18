@@ -12,6 +12,7 @@ from userapi.db import api as db_api
 APP = flask.Flask(__name__)
 
 REQUIRED_USER_FIELDS = ['userid', 'first_name', 'last_name']
+REQUIRED_GROUP_FIELDS = ['name']
 
 
 @APP.before_first_request
@@ -104,7 +105,10 @@ def get_group(name):
 @APP.route("/groups", methods=['POST'])
 @handle_exceptions
 def create_group():
-    return jsonify({})
+    body = request.get_json()
+    _check_fields(body, REQUIRED_GROUP_FIELDS)
+    new_group = db_api.create_group(body['name'])
+    return make_response(new_group.to_dict(), code=201)
 
 
 @APP.route("/groups/<name>", methods=['DELETE'])

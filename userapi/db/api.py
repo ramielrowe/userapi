@@ -28,6 +28,9 @@ class Group(peewee.Model):
 
     name = peewee.TextField(unique=True, index=True)
 
+    def to_dict(self):
+        return {'name': self.name}
+
 
 class UserGroups(peewee.Model):
     class Meta:
@@ -60,6 +63,10 @@ def get_user(userid):
 
 def _user_exists(userid):
     return User.select().where(User.userid == userid).exists()
+
+
+def _group_exists(name):
+    return Group.select().where(Group.name == name).exists()
 
 
 def create_user(user):
@@ -103,7 +110,12 @@ def get_group(name):
 
 
 def create_group(name):
-    pass
+    if _group_exists(name):
+        raise exceptions.GroupAlreadyExistsException()
+
+    new_group = Group(name=name)
+    new_group.save()
+    return new_group
 
 
 def update_group(name, members):

@@ -147,3 +147,28 @@ class APITestCase(unittest.TestCase):
 
         self.assertRaises(exceptions.UserNotFoundException,
                           api.delete_user, 'some_id')
+
+    def test_create_group(self):
+        mock_group = mock.MagicMock()
+
+        (self.Group.select.return_value
+                   .where.return_value
+                   .exists.return_value) = False
+        self.Group.return_value = mock_group
+
+        group_name = 'test_group'
+        new_group = api.create_group(group_name)
+
+        self.assertEqual(new_group, mock_group)
+        self.Group.assert_called_once_with(name=group_name)
+        mock_group.save.assert_called_once_with()
+
+    def test_create_group_already_exists(self):
+        (self.Group.select.return_value
+                   .where.return_value
+                   .exists.return_value) = True
+
+        group_name = 'test_group'
+        self.assertRaises(exceptions.GroupAlreadyExistsException,
+                          api.create_group, group_name)
+        self.assertFalse(self.Group.called)
