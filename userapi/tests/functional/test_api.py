@@ -200,6 +200,10 @@ class FunctionalTestCases(unittest.TestCase):
         self.assertEqual(200, get_result2.status_code)
         self.assertEqual([test_user['userid']], get_group2)
 
+    def test_update_group_does_not_exist(self):
+        update_result, _ = self._put('/groups/groupthatdoestexist',[])
+        self.assertEqual(404, update_result.status_code)
+
     def test_update_group_removes_user(self):
         test_user1 = create_test_user()
         test_user2 = create_test_user()
@@ -236,3 +240,24 @@ class FunctionalTestCases(unittest.TestCase):
         get_result2, get_group2 = self._get(group_url)
         self.assertEqual(200, get_result2.status_code)
         self.assertEqual([test_user1['userid']], get_group2)
+
+    def test_delete_group(self):
+        test_group = create_test_group()
+        group_url = '/groups/%s' % test_group['name']
+
+        create_group_result, _ = self._post('/groups', test_group)
+        self.assertEqual(201, create_group_result.status_code)
+
+        get_result1, get_group1 = self._get(group_url)
+        self.assertEqual(200, get_result1.status_code)
+        self.assertEqual([], get_group1)
+
+        delete_group_result, _ = self._delete(group_url)
+        self.assertEqual(200, delete_group_result.status_code)
+
+        get_result2, _ = self._get(group_url)
+        self.assertEqual(404, get_result2.status_code)
+
+    def test_delete_group_does_not_exist(self):
+        delete_group_result, _ = self._delete('/groups/groupthatdoestexist')
+        self.assertEqual(404, delete_group_result.status_code)

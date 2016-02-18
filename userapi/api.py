@@ -115,6 +115,7 @@ def create_group():
 @APP.route("/groups/<name>", methods=['DELETE'])
 @handle_exceptions
 def delete_group(name):
+    db_api.delete_group(name)
     return jsonify({})
 
 

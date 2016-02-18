@@ -300,7 +300,8 @@ class APITestCase(unittest.TestCase):
                                                 mock_user2.userid])
 
         self.assertEqual(mock_group, group)
-        mock_get_group.assert_called_once_with('test_group')
+        mock_get_group.assert_has_calls([mock.call('test_group'),
+                                        mock.call('test_group')])
         mock_get_user.assert_has_calls([mock.call(mock_user1.userid),
                                         mock.call(mock_user2.userid)])
         mock_remove_unrequested_users.assert_called_once_with(
@@ -309,3 +310,19 @@ class APITestCase(unittest.TestCase):
         mock_add_new_users.assert_called_once_with(mock_group,
                                                    requested_users,
                                                    existing_users)
+
+    def test_delete_group(self):
+        mock_group = mock.MagicMock()
+        self.Group.get.return_value = mock_group
+
+        api.delete_group('test_name')
+
+        self.Group.get.assert_called_once_with(self.Group.name == 'test_name')
+        self.assertTrue(mock_group.delete_instance.called)
+        self.assertTrue(self.UserGroups.delete.called)
+        self.UserGroups.delete.return_value.where.assert_called_once_with(
+            self.UserGroups.group == mock_group
+        )
+        self.assertTrue(self.UserGroups.delete.return_value
+                                       .where.return_value
+                                       .execute.called)

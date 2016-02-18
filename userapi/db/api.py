@@ -149,4 +149,6 @@ def update_group(name, member_ids):
 
 
 def delete_group(name):
-    pass
+    group = get_group(name)
+    UserGroups.delete().where(UserGroups.group == group).execute()
+    group.delete_instance()
