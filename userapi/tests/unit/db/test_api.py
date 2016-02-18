@@ -91,65 +91,153 @@ class APITestCase(unittest.TestCase):
 
         self.User.get.assert_called_once_with(self.User.userid == 'test_id')
 
-    def test_update_user(self):
-        (self.User.select.return_value
-                  .where.return_value
-                  .exists.return_value) = True
+    def test_save_user_fields(self):
         mock_user = mock.MagicMock()
-        self.User.get.return_value = mock_user
 
-        update_user = copy.deepcopy(fixtures.TEST_USER)
-        update_user['first_name'] = 'kyle'
-        new_user = api.update_user(update_user['userid'], update_user)
+        api_user = fixtures.TEST_USER_WITH_GROUP
+        api._save_user_fields(mock_user, api_user)
 
-        self.assertEqual(new_user, mock_user)
-        self.User.update.assert_called_once_with(**update_user)
-        self.User.update.return_value.where.assert_called_once_with(
-            self.User.userid == update_user['userid'])
-        self.assertTrue(self.User.update.return_value
-                                 .where.return_value
-                                 .execute.called)
-        self.User.get.assert_called_once_with(
-            self.User.userid == update_user['userid'])
+        self.assertEqual(api_user['userid'], mock_user.userid)
+        self.assertEqual(api_user['first_name'], mock_user.first_name)
+        self.assertEqual(api_user['last_name'], mock_user.last_name)
+        self.assertTrue(mock_user.save.called)
 
-    def test_update_user_change_userid(self):
-        (self.User.select.return_value
-                  .where.return_value
-                  .exists.side_effect) = [True, False]
+    def test_remove_unrequested_groups_keeps_existing(self):
         mock_user = mock.MagicMock()
-        self.User.get.return_value = mock_user
+        mock_group = mock.MagicMock()
+        mock_group.name = 'some_name'
+        mock_usergroup = mock.MagicMock()
+        mock_usergroup.user = mock_user
+        mock_usergroup.group = mock_group
+        mock_user.usergroups = [mock_usergroup]
+        requested_groups = {mock_group.name: mock_group}
 
-        update_user = copy.deepcopy(fixtures.TEST_USER)
-        old_id = update_user['userid']
-        update_user['userid'] = 'new_id'
-        new_user = api.update_user(old_id, update_user)
+        existing_groups = api._remove_unrequested_groups(mock_user,
+                                                         requested_groups)
+        self.assertIn(mock_group.name, existing_groups)
 
-        self.assertEqual(new_user, mock_user)
-        self.User.update.assert_called_once_with(**update_user)
-        self.User.update.return_value.where.assert_called_once_with(
-            self.User.userid == old_id)
-        self.User.get.assert_called_once_with(
-            self.User.userid == update_user['userid'])
+    def test_remove_unrequested_groups_delete_unrequested(self):
+        mock_user = mock.MagicMock()
+        mock_group = mock.MagicMock()
+        mock_group.name = 'some_name'
+        mock_usergroup = mock.MagicMock()
+        mock_usergroup.user = mock_user
+        mock_usergroup.group = mock_group
+        mock_user.usergroups = [mock_usergroup]
 
-    def test_update_user_change_userid_already_exists(self):
-        (self.User.select.return_value
-                  .where.return_value
-                  .exists.side_effect) = [True, True]
+        existing_groups = api._remove_unrequested_groups(mock_user, {})
+        self.assertEqual(0, len(existing_groups))
+        self.assertTrue(mock_usergroup.delete_instance.called)
 
-        update_user = copy.deepcopy(fixtures.TEST_USER)
-        old_id = update_user['userid']
-        update_user['userid'] = 'new_id'
+    def test_add_new_groups(self):
+        mock_user = mock.MagicMock()
+        mock_group = mock.MagicMock()
+        mock_group.name = 'some_name'
+        requested_groups = {mock_group.name: mock_group}
 
-        self.assertRaises(exceptions.UserAlreadyExistsException,
-                          api.update_user, old_id, update_user)
+        api._add_new_groups(mock_user, requested_groups, set())
+        self.UserGroups.assert_called_once_with(user=mock_user,
+                                                group=mock_group)
+        self.assertTrue(self.UserGroups.return_value.save.called)
 
-    def test_update_user_does_not_exist(self):
+    def test_add_new_groups_already_exists(self):
+        mock_user = mock.MagicMock()
+        mock_group = mock.MagicMock()
+        mock_group.name = 'some_name'
+        requested_groups = {mock_group.name: mock_group}
+
+        api._add_new_groups(mock_user, requested_groups, {mock_group.name})
+        self.assertFalse(self.UserGroups.called)
+
+    @mock.patch.object(api, '_add_new_groups')
+    @mock.patch.object(api, '_remove_unrequested_groups')
+    @mock.patch.object(api, '_save_user_fields')
+    @mock.patch.object(api, 'get_group')
+    @mock.patch.object(api, 'get_user')
+    def test_update_user(self, mock_get_user, mock_get_group,
+                         mock_save_user_fields,
+                         mock_remove_unrequested_groups,
+                         mock_add_new_groups):
+        mock_user = mock.MagicMock()
+        mock_get_user.return_value = mock_user
+        mock_remove_unrequested_groups.return_value = set()
+
+        api.update_user(fixtures.TEST_USER['userid'], fixtures.TEST_USER)
+
+        self.assertEqual(
+            mock_get_user.call_args_list,
+            [mock.call(fixtures.TEST_USER['userid']) for i in range(0, 2)])
+        self.assertFalse(mock_get_group.called)
+        mock_save_user_fields(mock_user, fixtures.TEST_USER)
+        mock_remove_unrequested_groups.assert_called_once_with(mock_user, {})
+        mock_add_new_groups.assert_called_once_with(mock_user, {}, set())
+
+    @mock.patch.object(api, '_add_new_groups')
+    @mock.patch.object(api, '_remove_unrequested_groups')
+    @mock.patch.object(api, '_save_user_fields')
+    @mock.patch.object(api, 'get_group')
+    @mock.patch.object(api, 'get_user')
+    def test_update_user_with_group(self, mock_get_user, mock_get_group,
+                         mock_save_user_fields,
+                         mock_remove_unrequested_groups,
+                         mock_add_new_groups):
+        mock_user = mock.MagicMock()
+        mock_get_user.return_value = mock_user
+        mock_group = mock.MagicMock()
+        mock_get_group.return_value = mock_group
+        existing_groups = set(fixtures.TEST_USER_WITH_GROUP['groups'][0])
+        mock_remove_unrequested_groups.return_value = existing_groups
+        requested_groups = {
+            fixtures.TEST_USER_WITH_GROUP['groups'][0]: mock_group
+        }
+
+        api.update_user(fixtures.TEST_USER_WITH_GROUP['userid'],
+                        fixtures.TEST_USER_WITH_GROUP)
+
+        self.assertEqual(
+            mock_get_user.call_args_list,
+            [mock.call(fixtures.TEST_USER_WITH_GROUP['userid'])
+             for i in range(0, 2)])
+        self.assertEqual(
+            mock_get_group.call_args_list,
+            [mock.call(x) for x in requested_groups.keys()])
+        mock_save_user_fields(mock_user, fixtures.TEST_USER_WITH_GROUP)
+        mock_remove_unrequested_groups.assert_called_once_with(
+            mock_user, requested_groups)
+        mock_add_new_groups.assert_called_once_with(
+            mock_user, requested_groups, existing_groups)
+
+    @mock.patch.object(api, '_add_new_groups')
+    @mock.patch.object(api, '_remove_unrequested_groups')
+    @mock.patch.object(api, '_save_user_fields')
+    @mock.patch.object(api, 'get_group')
+    @mock.patch.object(api, 'get_user')
+    def test_update_user_change_userid(self, mock_get_user, mock_get_group,
+                                       mock_save_user_fields,
+                                       mock_remove_unrequested_groups,
+                                       mock_add_new_groups):
+        mock_user = mock.MagicMock()
+        mock_get_user.return_value = mock_user
         (self.User.select.return_value
                   .where.return_value
                   .exists.return_value) = False
+        mock_remove_unrequested_groups.return_value = set()
 
-        self.assertRaises(exceptions.UserNotFoundException,
-                          api.update_user, 'some_id', fixtures.TEST_USER)
+        updated_user = copy.deepcopy(fixtures.TEST_USER)
+        updated_user['userid'] = 'new_id'
+        api.update_user(fixtures.TEST_USER['userid'], updated_user)
+
+        self.assertEqual(
+            mock_get_user.call_args_list,
+            [mock.call(fixtures.TEST_USER['userid']),
+             mock.call(updated_user['userid'])])
+        self.assertTrue(self.User.select.return_value
+                                 .where.return_value
+                                 .exists.called)
+        self.assertFalse(mock_get_group.called)
+        mock_save_user_fields(mock_user, fixtures.TEST_USER)
+        mock_remove_unrequested_groups.assert_called_once_with(mock_user, {})
+        mock_add_new_groups.assert_called_once_with(mock_user, {}, set())
 
     def test_delete_user(self):
         mock_user = mock.MagicMock()

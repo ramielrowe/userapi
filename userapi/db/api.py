@@ -1,3 +1,4 @@
+import copy
 import os
 
 import peewee
@@ -92,20 +93,47 @@ def create_user(user):
     return new_user
 
 
-def update_user(userid, user):
-    if not _user_exists(userid):
-        raise exceptions.UserNotFoundException()
+def _get_requested_groups(user):
+    return {name: get_group(name) for name in user.get('groups', list())}
 
-    if userid != user['userid'] and _user_exists(user['userid']):
+
+def _save_user_fields(db_user, api_user):
+    db_user.userid = api_user['userid']
+    db_user.first_name = api_user['first_name']
+    db_user.last_name = api_user['last_name']
+    db_user.save()
+
+
+def _remove_unrequested_groups(user, requested_groups):
+    existing_groups = set()
+    for usergroup in user.usergroups:
+        if usergroup.group.name not in requested_groups:
+            usergroup.delete_instance()
+        else:
+            existing_groups.add(usergroup.group.name)
+    return existing_groups
+
+
+def _add_new_groups(user, requested_groups, existing_groups):
+    for name, group in requested_groups.iteritems():
+        if name not in existing_groups:
+            UserGroups(user=user, group=group).save()
+
+
+def update_user(userid, api_user):
+    db_user = get_user(userid)
+
+    if userid != api_user['userid'] and _user_exists(api_user['userid']):
         raise exceptions.UserAlreadyExistsException()
 
-    (User.update(userid=user['userid'],
-                 first_name=user['first_name'],
-                 last_name=user['last_name'])
-         .where(User.userid == userid)
-         .execute())
+    requested_groups = _get_requested_groups(api_user)
 
-    return User.get(User.userid == user['userid'])
+    _save_user_fields(db_user, api_user)
+
+    existing_groups = _remove_unrequested_groups(db_user, requested_groups)
+    _add_new_groups(db_user, requested_groups, existing_groups)
+
+    return get_user(api_user['userid'])
 
 
 def delete_user(userid):

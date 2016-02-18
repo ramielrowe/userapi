@@ -326,5 +326,47 @@ class FunctionalTestCases(unittest.TestCase):
         self.assertEqual(200, delete_result.status_code)
 
         get_result, get_body = self._get('/groups/%s' % test_group['name'])
-        self.assertEqual(200, delete_result.status_code)
+        self.assertEqual(200, get_result.status_code)
         self.assertEqual([], get_body)
+
+    def test_update_user_with_group_add_user_to_group(self):
+        test_user = create_test_user()
+        user_url = '/users/%s' % test_user['userid']
+        test_group = create_test_group()
+        group_url = '/groups/%s' % test_group['name']
+
+        user_create_result, _ = self._post('/users', test_user)
+        self.assertEqual(201, user_create_result.status_code)
+
+        group_create_result, _ = self._post('/groups', test_group)
+        self.assertEqual(201, group_create_result.status_code)
+
+        test_user['groups'] = [test_group['name']]
+        update_result, update_body = self._put(user_url, test_user)
+        self.assertEqual(200, update_result.status_code)
+        self.assertEqual(test_user['groups'], update_body['groups'])
+
+        group_result, group_body = self._get(group_url)
+        self.assertEqual(200, group_result.status_code)
+        self.assertEqual([test_user['userid']], group_body)
+
+    def test_update_user_without_group_removes_user_to_group(self):
+        test_group = create_test_group()
+        group_url = '/groups/%s' % test_group['name']
+        test_user = create_test_user(groups=[test_group['name']])
+        user_url = '/users/%s' % test_user['userid']
+
+        group_create_result, _ = self._post('/groups', test_group)
+        self.assertEqual(201, group_create_result.status_code)
+
+        user_create_result, _ = self._post('/users', test_user)
+        self.assertEqual(201, user_create_result.status_code)
+
+        test_user['groups'] = []
+        update_result, update_body = self._put(user_url, test_user)
+        self.assertEqual(200, update_result.status_code)
+        self.assertEqual([], update_body['groups'])
+
+        group_result, group_body = self._get(group_url)
+        self.assertEqual(200, group_result.status_code)
+        self.assertEqual([], group_body)

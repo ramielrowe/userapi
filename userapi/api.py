@@ -95,6 +95,8 @@ def delete_user(userid):
 def update_user(userid):
     body = request.get_json()
     _check_fields(body, REQUIRED_USER_FIELDS)
+    if 'groups' in body and not isinstance(body['groups'], list):
+        raise exceptions.InvalidRequestException()
     updated_user = db_api.update_user(userid, body)
     return jsonify(updated_user.to_dict())
 

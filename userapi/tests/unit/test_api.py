@@ -66,7 +66,7 @@ class APITestCase(unittest.TestCase):
         self.assertEqual(new_user, fixtures.TEST_USER)
         self.mock_db.create_user.assert_called_once_with(fixtures.TEST_USER)
 
-    def test_create_with_groups(self):
+    def test_create_user_with_groups(self):
         mock_user = mock.MagicMock()
         mock_user.to_dict.return_value = fixtures.TEST_USER_WITH_GROUP
         self.mock_db.create_user.return_value = mock_user
@@ -78,7 +78,7 @@ class APITestCase(unittest.TestCase):
         self.mock_db.create_user.assert_called_once_with(
             fixtures.TEST_USER_WITH_GROUP)
 
-    def test_create_with_groups_not_list(self):
+    def test_create_user_with_groups_not_list(self):
         mock_user = mock.MagicMock()
         mock_user.to_dict.return_value = fixtures.TEST_USER_WITH_GROUP
         self.mock_db.create_user.return_value = mock_user
@@ -128,9 +128,33 @@ class APITestCase(unittest.TestCase):
         self.mock_db.update_user.assert_called_once_with('test',
                                                          updated_user)
 
+    def test_update_user_with_groups(self):
+        updated_user = copy.deepcopy(fixtures.TEST_USER_WITH_GROUP)
+        updated_user['first_name'] = 'kyle'
+
+        mock_user = mock.MagicMock()
+        mock_user.to_dict.return_value = updated_user
+        self.mock_db.update_user.return_value = mock_user
+
+        resp, body = self._put('/users/test', updated_user)
+
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(updated_user, body)
+        self.mock_db.update_user.assert_called_once_with('test',
+                                                         updated_user)
+
     def test_update_user_missing_field(self):
         updated_user = copy.deepcopy(fixtures.TEST_USER)
         del updated_user['first_name']
+
+        resp, body = self._put('/users/test', updated_user)
+
+        self.assertEqual(400, resp.status_code)
+        self.assertFalse(self.mock_db.update_user.called)
+
+    def test_update_user_groups_not_list(self):
+        updated_user = copy.deepcopy(fixtures.TEST_USER)
+        updated_user['groups'] = {}
 
         resp, body = self._put('/users/test', updated_user)
 
