@@ -21,6 +21,10 @@ class FunctionalTestCases(unittest.TestCase):
         response = requests.get(API_URL + path)
         return response, response.json()
 
+    def _delete(self, path):
+        response = requests.delete(API_URL + path)
+        return response, response.json()
+
     def _post(self, path, data):
         response = requests.post(API_URL + path,
                                  data=json.dumps(data),
@@ -123,3 +127,18 @@ class FunctionalTestCases(unittest.TestCase):
         test_user1['userid'] = test_user2['userid']
         update_result, body = self._put('/users/%s' % old_id, test_user1)
         self.assertEqual(409, update_result.status_code)
+
+    def test_delete_user(self):
+        test_user = create_test_user()
+
+        create_result, _ = self._post('/users', test_user)
+        self.assertEqual(201, create_result.status_code)
+
+        get_before_result, _ = self._get('/users/%s' % test_user['userid'])
+        self.assertEqual(200, get_before_result.status_code)
+
+        delete_result, _ = self._delete('/users/%s' % test_user['userid'])
+        self.assertEqual(200, delete_result.status_code)
+
+        get_after_result, _ = self._get('/users/%s' % test_user['userid'])
+        self.assertEqual(404, get_after_result.status_code)

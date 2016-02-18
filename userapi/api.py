@@ -82,6 +82,7 @@ def create_user():
 @APP.route("/users/<userid>", methods=['DELETE'])
 @handle_exceptions
 def delete_user(userid):
+    db_api.delete_user(userid)
     return jsonify({})
 
 

@@ -84,6 +84,9 @@ class APITestCase(unittest.TestCase):
         self.User.update.assert_called_once_with(**update_user)
         self.User.update.return_value.where.assert_called_once_with(
             self.User.userid == update_user['userid'])
+        self.assertTrue(self.User.update.return_value
+                                 .where.return_value
+                                 .execute.called)
         self.User.get.assert_called_once_with(
             self.User.userid == update_user['userid'])
 
@@ -125,3 +128,22 @@ class APITestCase(unittest.TestCase):
 
         self.assertRaises(exceptions.UserNotFoundException,
                           api.update_user, 'some_id', fixtures.TEST_USER)
+
+    def test_delete_user(self):
+        (self.User.select.return_value
+                  .where.return_value
+                  .exists.return_value) = True
+
+        api.delete_user('some_id')
+
+        self.User.delete.return_value.where.assert_called_once_with(
+            self.User.userid == 'some_id'
+        )
+
+    def test_delete_user_does_not_exist(self):
+        (self.User.select.return_value
+                  .where.return_value
+                  .exists.return_value) = False
+
+        self.assertRaises(exceptions.UserNotFoundException,
+                          api.delete_user, 'some_id')

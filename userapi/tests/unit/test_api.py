@@ -35,6 +35,9 @@ class APITestCase(unittest.TestCase):
     def _get(self, url):
         return self._req(self.app.get, url)
 
+    def _delete(self, url):
+        return self._req(self.app.delete, url)
+
     def test_get_user(self):
         mock_user = mock.MagicMock()
         mock_user.to_dict.return_value = fixtures.TEST_USER
@@ -84,7 +87,9 @@ class APITestCase(unittest.TestCase):
         self.assertFalse(self.mock_db.create_user.called)
 
     def test_delete_user(self):
-        self.app.delete('/users/a')
+        resp, _ = self._delete('/users/test')
+        self.assertEqual(200, resp.status_code)
+        self.mock_db.delete_user.assert_called_once_with('test')
 
     def test_update_user(self):
         updated_user = copy.deepcopy(fixtures.TEST_USER)
