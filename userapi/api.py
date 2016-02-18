@@ -1,5 +1,6 @@
-import logging
 import functools
+import json
+import logging
 
 import flask
 from flask import g
@@ -54,7 +55,7 @@ def handle_exceptions(func):
 
 
 def make_response(data, code=200):
-    response = jsonify(data)
+    response = flask.make_response(json.dumps(data))
     response.status_code = code
     return response
 
@@ -99,7 +100,7 @@ def update_user(userid):
 @APP.route("/groups/<name>", methods=['GET'])
 @handle_exceptions
 def get_group(name):
-    return jsonify({})
+    return make_response(db_api.get_group(name).to_list())
 
 
 @APP.route("/groups", methods=['POST'])

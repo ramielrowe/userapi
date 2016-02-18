@@ -31,13 +31,16 @@ class Group(peewee.Model):
     def to_dict(self):
         return {'name': self.name}
 
+    def to_list(self):
+        return [ug.user.userid for ug in self.usergroups]
+
 
 class UserGroups(peewee.Model):
     class Meta:
         database = DATABASE
 
-    user = peewee.ForeignKeyField(User, index=True)
-    group = peewee.ForeignKeyField(Group, index=True)
+    user = peewee.ForeignKeyField(User, index=True, related_name='usergroups')
+    group = peewee.ForeignKeyField(Group, index=True, related_name='usergroups')
 
 
 def get_database(database=None, user=None, password=None, host=None):
@@ -106,7 +109,10 @@ def delete_user(userid):
 
 
 def get_group(name):
-    pass
+    try:
+        return Group.get(Group.name == name)
+    except Group.DoesNotExist as dne:
+        raise exceptions.UserNotFoundException
 
 
 def create_group(name):

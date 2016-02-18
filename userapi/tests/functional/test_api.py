@@ -154,6 +154,7 @@ class FunctionalTestCases(unittest.TestCase):
 
         create_result, body = self._post('/groups', test_group)
 
+        self.assertEqual(201, create_result.status_code)
         self.assertEqual(test_group['name'], body['name'])
 
     def test_create_group_already_exists(self):
@@ -164,3 +165,13 @@ class FunctionalTestCases(unittest.TestCase):
 
         self.assertEqual(201, create_result1.status_code)
         self.assertEqual(409, create_result2.status_code)
+
+    def test_get_group(self):
+        test_group = create_test_group()
+
+        create_result, _ = self._post('/groups', test_group)
+        get_result, body = self._get('/groups/%s' % test_group['name'])
+
+        self.assertEqual(201, create_result.status_code)
+        self.assertEqual(200, get_result.status_code)
+        self.assertEqual([], body)

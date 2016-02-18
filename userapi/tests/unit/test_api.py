@@ -114,7 +114,15 @@ class APITestCase(unittest.TestCase):
         self.assertFalse(self.mock_db.update_user.called)
 
     def test_get_group(self):
-        self.app.get('/groups/a')
+        user_list = ['andrew', 'sam']
+        mock_group = mock.MagicMock()
+        mock_group.to_list.return_value = user_list
+        self.mock_db.get_group.return_value = mock_group
+
+        resp, body = self._get('/groups/admins')
+
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(body, user_list)
 
     def test_create_group(self):
         mock_group = mock.MagicMock()
