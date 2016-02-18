@@ -58,10 +58,14 @@ def get_user(userid):
         raise exceptions.UserNotFoundException
 
 
+def _user_exists(userid):
+    return User.select().where(User.userid == userid).exists()
+
+
 def create_user(user):
     userid = user['userid']
 
-    if User.select().where(User.userid == userid).exists():
+    if _user_exists(userid):
         raise exceptions.UserAlreadyExistsException()
 
     new_user = User(userid=userid,
@@ -72,7 +76,19 @@ def create_user(user):
 
 
 def update_user(userid, user):
-    pass
+    if not _user_exists(userid):
+        raise exceptions.UserNotFoundException()
+
+    if userid != user['userid'] and _user_exists(user['userid']):
+        raise exceptions.UserAlreadyExistsException()
+
+    (User.update(userid=user['userid'],
+                 first_name=user['first_name'],
+                 last_name=user['last_name'])
+         .where(User.userid == userid)
+         .execute())
+
+    return User.get(User.userid == user['userid'])
 
 
 def delete_user(userid):

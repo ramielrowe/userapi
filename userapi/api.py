@@ -88,7 +88,10 @@ def delete_user(userid):
 @APP.route("/users/<userid>", methods=['PUT'])
 @handle_exceptions
 def update_user(userid):
-    return jsonify({})
+    body = request.get_json()
+    _check_fields(body, REQUIRED_USER_FIELDS)
+    updated_user = db_api.update_user(userid, body)
+    return jsonify(updated_user.to_dict())
 
 
 @APP.route("/groups/<name>", methods=['GET'])

@@ -1,9 +1,11 @@
+import copy
 import unittest
 
 import mock
 
 from userapi.db import api
 from userapi import exceptions
+from userapi.tests.unit import fixtures
 
 
 class APITestCase(unittest.TestCase):
@@ -28,9 +30,7 @@ class APITestCase(unittest.TestCase):
                   .exists.return_value) = False
         self.User.return_value = mock_user
 
-        user = {'userid': 'amelton',
-                'first_name': 'andrew',
-                'last_name': 'melton'}
+        user = fixtures.TEST_USER
         new_user = api.create_user(user)
 
         self.assertEqual(new_user, mock_user)
@@ -46,13 +46,10 @@ class APITestCase(unittest.TestCase):
 
         self.assertRaises(exceptions.UserAlreadyExistsException,
                           api.create_user,
-                          {'userid': 'amelton',
-                           'first_name': 'andrew',
-                           'last_name': 'melton'})
+                          fixtures.TEST_USER)
 
     def test_get_user(self):
         mock_user = mock.MagicMock()
-
         self.User.get.return_value = mock_user
 
         new_user = api.get_user('test_id')
@@ -71,3 +68,60 @@ class APITestCase(unittest.TestCase):
                           'test_id')
 
         self.User.get.assert_called_once_with(self.User.userid == 'test_id')
+
+    def test_update_user(self):
+        (self.User.select.return_value
+                  .where.return_value
+                  .exists.return_value) = True
+        mock_user = mock.MagicMock()
+        self.User.get.return_value = mock_user
+
+        update_user = copy.deepcopy(fixtures.TEST_USER)
+        update_user['first_name'] = 'kyle'
+        new_user = api.update_user(update_user['userid'], update_user)
+
+        self.assertEqual(new_user, mock_user)
+        self.User.update.assert_called_once_with(**update_user)
+        self.User.update.return_value.where.assert_called_once_with(
+            self.User.userid == update_user['userid'])
+        self.User.get.assert_called_once_with(
+            self.User.userid == update_user['userid'])
+
+    def test_update_user_change_userid(self):
+        (self.User.select.return_value
+                  .where.return_value
+                  .exists.side_effect) = [True, False]
+        mock_user = mock.MagicMock()
+        self.User.get.return_value = mock_user
+
+        update_user = copy.deepcopy(fixtures.TEST_USER)
+        old_id = update_user['userid']
+        update_user['userid'] = 'new_id'
+        new_user = api.update_user(old_id, update_user)
+
+        self.assertEqual(new_user, mock_user)
+        self.User.update.assert_called_once_with(**update_user)
+        self.User.update.return_value.where.assert_called_once_with(
+            self.User.userid == old_id)
+        self.User.get.assert_called_once_with(
+            self.User.userid == update_user['userid'])
+
+    def test_update_user_change_userid_already_exists(self):
+        (self.User.select.return_value
+                  .where.return_value
+                  .exists.side_effect) = [True, True]
+
+        update_user = copy.deepcopy(fixtures.TEST_USER)
+        old_id = update_user['userid']
+        update_user['userid'] = 'new_id'
+
+        self.assertRaises(exceptions.UserAlreadyExistsException,
+                          api.update_user, old_id, update_user)
+
+    def test_update_user_does_not_exist(self):
+        (self.User.select.return_value
+                  .where.return_value
+                  .exists.return_value) = False
+
+        self.assertRaises(exceptions.UserNotFoundException,
+                          api.update_user, 'some_id', fixtures.TEST_USER)

@@ -1,17 +1,11 @@
+import copy
 import json
 import mock
 import unittest
 
 from userapi import api
 from userapi import exceptions
-
-
-TEST_USER = {
-    'first_name': 'Joe',
-    'last_name': 'Smith',
-    'userid': 'jsmith',
-    'groups': ['admins', 'users']
-}
+from userapi.tests.unit import fixtures
 
 TEST_GROUP = {'name': 'users'}
 
@@ -43,12 +37,12 @@ class APITestCase(unittest.TestCase):
 
     def test_get_user(self):
         mock_user = mock.MagicMock()
-        mock_user.to_dict.return_value = TEST_USER
+        mock_user.to_dict.return_value = fixtures.TEST_USER
         self.mock_db.get_user.return_value = mock_user
 
         resp, new_user = self._get('/users/test')
 
-        self.assertEqual(new_user, TEST_USER)
+        self.assertEqual(new_user, fixtures.TEST_USER)
         self.mock_db.get_user.assert_called_once_with('test')
 
     def test_get_user_does_not_exist(self):
@@ -57,27 +51,28 @@ class APITestCase(unittest.TestCase):
 
         resp, _ = self._get('/users/test')
 
-        self.assertEqual(resp.status_code, exc.status_code)
+        self.assertEqual(exc.status_code, resp.status_code)
         self.mock_db.get_user.assert_called_once_with('test')
 
     def test_create_user(self):
         mock_user = mock.MagicMock()
-        mock_user.to_dict.return_value = TEST_USER
+        mock_user.to_dict.return_value = fixtures.TEST_USER
         self.mock_db.create_user.return_value = mock_user
 
-        resp, new_user = self._post('/users', TEST_USER)
+        resp, new_user = self._post('/users', fixtures.TEST_USER)
 
-        self.assertEqual(new_user, TEST_USER)
-        self.mock_db.create_user.assert_called_once_with(TEST_USER)
+        self.assertEqual(201, resp.status_code)
+        self.assertEqual(new_user, fixtures.TEST_USER)
+        self.mock_db.create_user.assert_called_once_with(fixtures.TEST_USER)
 
     def test_create_user_already_exists(self):
         exc = exceptions.UserAlreadyExistsException()
         self.mock_db.create_user.side_effect = exc
 
-        resp, _ = self._post('/users', TEST_USER)
+        resp, _ = self._post('/users', fixtures.TEST_USER)
 
-        self.assertEqual(resp.status_code, exc.status_code)
-        self.mock_db.create_user.assert_called_once_with(TEST_USER)
+        self.assertEqual(exc.status_code, resp.status_code)
+        self.mock_db.create_user.assert_called_once_with(fixtures.TEST_USER)
 
     def test_create_user_missing_field(self):
         exc = exceptions.MissingRequiredFieldException()
@@ -85,14 +80,35 @@ class APITestCase(unittest.TestCase):
 
         resp, _ = self._post('/users', {'first_name': 'andrew'})
 
-        self.assertEqual(resp.status_code, exc.status_code)
+        self.assertEqual(exc.status_code, resp.status_code)
         self.assertFalse(self.mock_db.create_user.called)
 
     def test_delete_user(self):
         self.app.delete('/users/a')
 
     def test_update_user(self):
-        self._put('/users/a', TEST_USER)
+        updated_user = copy.deepcopy(fixtures.TEST_USER)
+        updated_user['first_name'] = 'kyle'
+
+        mock_user = mock.MagicMock()
+        mock_user.to_dict.return_value = updated_user
+        self.mock_db.update_user.return_value = mock_user
+
+        resp, body = self._put('/users/test', updated_user)
+
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(updated_user, body)
+        self.mock_db.update_user.assert_called_once_with('test',
+                                                         updated_user)
+
+    def test_update_user_missing_field(self):
+        updated_user = copy.deepcopy(fixtures.TEST_USER)
+        del updated_user['first_name']
+
+        resp, body = self._put('/users/test', updated_user)
+
+        self.assertEqual(400, resp.status_code)
+        self.assertFalse(self.mock_db.update_user.called)
 
     def test_get_group(self):
         self.app.get('/groups/a')
