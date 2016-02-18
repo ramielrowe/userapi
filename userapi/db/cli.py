@@ -27,4 +27,4 @@ def main():
     create_tables_parser.set_defaults(func=create_tables)
 
     args = parser.parse_args()
-    args.func(args)
+    args.func()

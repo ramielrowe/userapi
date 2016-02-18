@@ -3,20 +3,36 @@ import os
 import peewee
 from playhouse import postgres_ext
 
+from userapi import exceptions
+
 DATABASE = postgres_ext.PostgresqlExtDatabase(None, register_hstore=False)
 
 
 class User(peewee.Model):
+    class Meta:
+        database = DATABASE
+
     userid = peewee.TextField(unique=True, index=True)
     first_name = peewee.TextField()
     last_name = peewee.TextField()
 
+    def to_dict(self):
+        return {'userid': self.userid,
+                'first_name': self.first_name,
+                'last_name': self.last_name}
+
 
 class Group(peewee.Model):
+    class Meta:
+        database = DATABASE
+
     name = peewee.TextField(unique=True, index=True)
 
 
 class UserGroups(peewee.Model):
+    class Meta:
+        database = DATABASE
+
     user = peewee.ForeignKeyField(User, index=True)
     group = peewee.ForeignKeyField(Group, index=True)
 
@@ -32,15 +48,24 @@ def get_database(database=None, user=None, password=None, host=None):
 
 
 def _create_tables(database):
-    database.create_tables([User, Group, UserGroups])
+    database.create_tables([User, Group, UserGroups], safe=True)
 
 
 def get_user(userid):
     pass
 
 
-def create_user(userid, user):
-    pass
+def create_user(user):
+    userid = user['userid']
+
+    if User.select().where(User.userid == userid).exists():
+        raise exceptions.UserAlreadyExistsException()
+
+    new_user = User(userid=userid,
+                    first_name=user['first_name'],
+                    last_name=user['last_name'])
+    new_user.save()
+    return new_user
 
 
 def update_user(userid, user):

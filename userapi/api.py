@@ -1,11 +1,17 @@
 import logging
+import functools
 
 import flask
 from flask import g
+from flask import jsonify
+from flask import request
 
+from userapi import exceptions
 from userapi.db import api as db_api
 
 APP = flask.Flask(__name__)
+
+REQUIRED_USER_FIELDS = ['userid', 'first_name', 'last_name']
 
 
 @APP.before_first_request
@@ -15,52 +21,95 @@ def _setup():
 
 
 @APP.before_request
-def before_request():
+def _before_request():
     g.database = db_api.get_database()
     g.database.connect()
 
 
 @APP.after_request
-def after_request(response):
+def _after_request(response):
     g.database.close()
     return response
 
 
+def handle_exceptions(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwds):
+        try:
+            return func(*args, **kwds)
+        except exceptions.BaseAPIException as ae:
+            response = jsonify({'exception': ae.__class__.__name__,
+                                'code': ae.status_code})
+            response.status_code = ae.status_code
+            return response
+        except:
+            logging.exception('Internal server error')
+            response = jsonify({'exception': 'InternalServerException',
+                                'code': 500})
+            response.status_code = 500
+            return response
+
+    return wrapper
+
+
+def make_response(data, code=200):
+    response = jsonify(data)
+    response.status_code = code
+    return response
+
+
+def _check_fields(body, fields):
+    for field in fields:
+        if field not in body or not body[field]:
+            raise exceptions.MissingRequiredFieldException()
+
+
 @APP.route("/users/<userid>", methods=['GET'])
+@handle_exceptions
 def get_user(userid):
-    return ''
+    return jsonify({})
 
 
 @APP.route("/users", methods=['POST'])
+@handle_exceptions
 def create_user():
-    return ''
+    body = request.get_json()
+    _check_fields(body, REQUIRED_USER_FIELDS)
+    new_user = db_api.create_user(body)
+    return make_response(new_user.to_dict(), code=201)
 
 
 @APP.route("/users/<userid>", methods=['DELETE'])
+@handle_exceptions
 def delete_user(userid):
-    return ''
+    return jsonify({})
 
 
 @APP.route("/users/<userid>", methods=['PUT'])
+@handle_exceptions
 def update_user(userid):
-    return ''
+    return jsonify({})
 
 
 @APP.route("/groups/<name>", methods=['GET'])
+@handle_exceptions
 def get_group(name):
-    return ''
+    return jsonify({})
 
 
 @APP.route("/groups", methods=['POST'])
+@handle_exceptions
 def create_group():
-    return ''
+    return jsonify({})
 
 
 @APP.route("/groups/<name>", methods=['DELETE'])
+@handle_exceptions
 def delete_group(name):
-    return ''
+    return jsonify({})
 
 
 @APP.route("/groups/<name>", methods=['PUT'])
+@handle_exceptions
 def update_group(name):
-    return ''
+    return jsonify({})

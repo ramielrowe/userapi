@@ -2,4 +2,4 @@
 
 . env.sh
 
-docker build -t ${ENV_NAME}userapi .
+docker build -t ${ENV_NAME}userapi_api .
