@@ -283,3 +283,27 @@ class FunctionalTestCases(unittest.TestCase):
         self.assertEqual(test_user['last_name'], get_body['last_name'])
         self.assertEqual(test_user['first_name'], get_body['first_name'])
         self.assertEqual(test_user['groups'], get_body['groups'])
+
+    def test_delete_group_removes_user_from_group(self):
+        test_group = create_test_group()
+        test_user = create_test_user(groups=[test_group['name']])
+
+        group_result, _ = self._post('/groups', test_group)
+        self.assertEqual(201, group_result.status_code)
+
+        user_result, user_body = self._post('/users', test_user)
+        self.assertEqual(201, user_result.status_code)
+        self.assertEqual(test_user['userid'], user_body['userid'])
+        self.assertEqual(test_user['last_name'], user_body['last_name'])
+        self.assertEqual(test_user['first_name'], user_body['first_name'])
+        self.assertEqual(test_user['groups'], user_body['groups'])
+
+        delete_result, _ = self._delete('/groups/%s' % test_group['name'])
+        self.assertEqual(200, delete_result.status_code)
+
+        get_result, get_body = self._get('/users/%s' % test_user['userid'])
+        self.assertEqual(200, get_result.status_code)
+        self.assertEqual(test_user['userid'], get_body['userid'])
+        self.assertEqual(test_user['last_name'], get_body['last_name'])
+        self.assertEqual(test_user['first_name'], get_body['first_name'])
+        self.assertEqual([], get_body['groups'])
