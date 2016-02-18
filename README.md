@@ -1,8 +1,115 @@
-userapi
-=======
+# userapi
 
-Development environment
------------------------
+ * [API Documentation](#api-documentation)
+ * [Development Environment](#development-environment)
+
+### API Documentation
+
+#### GET /users/`<userid>` - Get Specified User
+  * Parameters:
+    * userid - ID of user to retrieve
+  * Example Response Body:
+    * `{"userid": "apmelton", "first_name": "Andrew", "last_name": "Melton", "groups": ["admins"]}`
+  * Status Codes:
+    * 200 - Requested user exists
+    * 404 - Requested user does not exist
+
+#### POST /users - Create Specified User
+  * Parameters:
+    * None
+  * Required fields:
+    * userid - str
+    * first_name - str
+    * last_name - str
+  * Optional fields:
+    * groups - list(str)
+      * default - empty list
+  * Example Request Body:
+    * `{"userid": "apmelton", "first_name": "Andrew", "last_name": "Melton", "groups": ["admins"]}`
+  * Example Response Body:
+    * `{"userid": "apmelton", "first_name": "Andrew", "last_name": "Melton", "groups": ["admins"]}`
+  * Status Codes:
+    * 201 - Requested user has been created
+    * 400 - Required field missing
+    * 409 - User with requested `userid` already exists
+
+#### PUT /users/`<userid>` - Update Specified User
+  * Description: Updates the give users fields or groups.
+  * Parameters:
+    * userid - The ID of the user to update
+  * Required fields:
+    * userid - str
+    * first_name - str
+    * last_name - str
+  * Optional fields:
+    * groups - list(str)
+      * default - empty list
+  * Example Request Body:
+    * `{"userid": "apmelton", "first_name": "Drew", "last_name": "Melton", "groups": ["admins"]}`
+  * Example Response Body:
+    * `{"userid": "apmelton", "first_name": "Drew", "last_name": "Melton", "groups": ["admins"]}`
+  * Status Codes:
+    * 201 - Requested user has been created
+    * 400 - Required field missing
+    * 404 - Requested user does not exist
+    * 409 - Requested new `userid` already exists
+
+#### DELETE /users/`<userid>` - Delete Specified User
+  * Description: Deletes a user from any groups it is a member of then deletes the user.
+  * Parameters:
+    * userid - The ID of the user to update
+  * Status Codes:
+    * 200 - Requested user has been deleted
+    * 404 - Requested user does not exist
+
+#### GET /groups/`<name>` - Get Specified Group
+  * Description: Returns list of userids of users in specified group.
+  * Parameters:
+    * name - Name of group to retrieve
+  * Example Response Body:
+    * `["apmelton", "sflynn", "tron"]`
+  * Status Codes:
+    * 200 - Requested group exists
+    * 404 - Requested group does not exist
+
+#### POST /groups - Create Specified Group
+  * Description: Creates an empty group with specified name.
+  * Parameters:
+    * None
+  * Required fields:
+    * name - str
+  * Example Request Body:
+    * `{"name": "admins"}`
+  * Example Response Body:
+    * `{"name": "admins"}`
+  * Status Codes:
+    * 201 - Requested group has been created
+    * 400 - Required field missing
+    * 409 - Group with specified `name` already exists
+
+#### PUT /groups/`name` - Update Members of Specified Group
+  * Parameters:
+    * name - Name of group to update
+  * Required fields:
+    * bare list of `userid`s
+  * Example Request Body:
+    * `["cartman", "kenny", "kyle", "stan"]`
+  * Example Response Body:
+    * `["cartman", "kenny", "kyle", "stan"]`
+  * Status Codes:
+    * 200 - Requested group has been updated
+    * 400 - Response body is not a list
+    * 404 - Requested group or user does not exist
+
+#### DELETE /groups/`name` - Specified Specified Group
+  * Description: Removes any users from specified group, then deletes the group
+  * Parameters:
+    * name - Name of group to delete
+  * Status Codes:
+    * 200 - Requested group has been deleted
+    * 404 - Requested group does not exist
+
+### Development Environment
 
 The following guide has been tested on Ubuntu 14.04 with Docker 1.10.
 
